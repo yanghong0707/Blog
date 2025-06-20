@@ -1,9 +1,10 @@
 /** @type {import("pliny/config").PlinyConfig } */
 const siteMetadata = {
-  title: 'Next.js Starter Blog',
+  title: '探索AI智能体的全栈技术演进',
   author: '杨泓',
-  headerTitle: 'TailwindBlog',
-  description: 'A blog created with Next.js and Tailwind.css',
+  headerTitle: 'AI Agent技术工坊',
+  description:
+    '专注AI Agent技术的全栈开发实践，记录前端交互组件（Vue/React）与后端智能逻辑（LangChain/LLM）的协同方案。内容涵盖提示词工程优化、RAG系统集成、多模态模型对接等技术探索，分享金融交易、智能客服等场景下的AI Agent落地经验。',
   language: 'en-us',
   theme: 'system', // system, dark or light
   siteUrl: 'https://tailwind-nextjs-starter-blog.vercel.app',
