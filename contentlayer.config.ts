@@ -1,35 +1,49 @@
+// 导入Contentlayer核心函数，用于定义文档类型和创建数据源
 import { defineDocumentType, ComputedFields, makeSource } from 'contentlayer2/source-files'
+// 导入文件系统操作模块，用于写入文件
 import { writeFileSync } from 'fs'
+// 导入阅读时间计算工具
 import readingTime from 'reading-time'
+// 导入GitHub风格的slug生成工具
 import { slug } from 'github-slugger'
+// 导入路径处理模块
 import path from 'path'
+// 导入HTML转换工具，用于处理图标
 import { fromHtmlIsomorphic } from 'hast-util-from-html-isomorphic'
-// Remark packages
-import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
-import { remarkAlert } from 'remark-github-blockquote-alert'
+
+// Remark相关插件 - 用于处理Markdown内容
+import remarkGfm from 'remark-gfm' // 支持GitHub Flavored Markdown
+import remarkMath from 'remark-math' // 支持数学公式
+import { remarkAlert } from 'remark-github-blockquote-alert' // 支持GitHub风格的引用警报
 import {
-  remarkExtractFrontmatter,
-  remarkCodeTitles,
-  remarkImgToJsx,
-  extractTocHeadings,
+  remarkExtractFrontmatter, // 提取frontmatter元数据
+  remarkCodeTitles, // 支持代码块标题
+  remarkImgToJsx, // 将图片转换为JSX组件
+  extractTocHeadings, // 提取目录标题
 } from 'pliny/mdx-plugins/index.js'
-// Rehype packages
-import rehypeSlug from 'rehype-slug'
-import rehypeAutolinkHeadings from 'rehype-autolink-headings'
-import rehypeKatex from 'rehype-katex'
-import rehypeKatexNoTranslate from 'rehype-katex-notranslate'
-import rehypeCitation from 'rehype-citation'
-import rehypePrismPlus from 'rehype-prism-plus'
-import rehypePresetMinify from 'rehype-preset-minify'
+
+// Rehype相关插件 - 用于处理HTML转换
+import rehypeSlug from 'rehype-slug' // 为标题添加ID
+import rehypeAutolinkHeadings from 'rehype-autolink-headings' // 为标题添加链接
+import rehypeKatex from 'rehype-katex' // 渲染KaTeX数学公式
+import rehypeKatexNoTranslate from 'rehype-katex-notranslate' // 防止KaTeX内容被翻译
+import rehypeCitation from 'rehype-citation' // 处理引用
+import rehypePrismPlus from 'rehype-prism-plus' // 代码高亮
+import rehypePresetMinify from 'rehype-preset-minify' // 最小化HTML输出
+
+// 导入站点元数据配置
 import siteMetadata from './data/siteMetadata'
+// 导入Pliny工具函数，用于内容处理
 import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
+// 导入代码格式化工具
 import prettier from 'prettier'
 
+// 获取当前工作目录
 const root = process.cwd()
+// 判断是否为生产环境
 const isProduction = process.env.NODE_ENV === 'production'
 
-// heroicon mini link
+// 创建标题前的链接图标（使用heroicon的迷你链接图标）
 const icon = fromHtmlIsomorphic(
   `
   <span class="content-header-link">
@@ -39,35 +53,43 @@ const icon = fromHtmlIsomorphic(
   </svg>
   </span>
 `,
-  { fragment: true }
+  { fragment: true } // 作为片段处理，不生成完整HTML文档
 )
 
+// 定义计算字段 - 这些字段会根据文档内容自动计算生成
 const computedFields: ComputedFields = {
-  readingTime: { type: 'json', resolve: (doc) => readingTime(doc.body.raw) },
+  readingTime: {
+    type: 'json',
+    resolve: (doc) => readingTime(doc.body.raw), // 计算阅读时间
+  },
   slug: {
     type: 'string',
-    resolve: (doc) => doc._raw.flattenedPath.replace(/^.+?(\/)/, ''),
+    resolve: (doc) => doc._raw.flattenedPath.replace(/^.+?(\/)/, ''), // 生成slug
   },
   path: {
     type: 'string',
-    resolve: (doc) => doc._raw.flattenedPath,
+    resolve: (doc) => doc._raw.flattenedPath, // 获取文档路径
   },
   filePath: {
     type: 'string',
-    resolve: (doc) => doc._raw.sourceFilePath,
+    resolve: (doc) => doc._raw.sourceFilePath, // 获取源文件路径
   },
-  toc: { type: 'json', resolve: (doc) => extractTocHeadings(doc.body.raw) },
+  toc: {
+    type: 'json',
+    resolve: (doc) => extractTocHeadings(doc.body.raw), // 提取目录
+  },
 }
 
 /**
- * Count the occurrences of all tags across blog posts and write to json file
+ * 统计所有博客文章中标签的出现次数，并写入JSON文件
  */
 async function createTagCount(allBlogs) {
   const tagCount: Record<string, number> = {}
   allBlogs.forEach((file) => {
+    // 只处理非草稿文章（生产环境）或所有文章（开发环境）
     if (file.tags && (!isProduction || file.draft !== true)) {
       file.tags.forEach((tag) => {
-        const formattedTag = slug(tag)
+        const formattedTag = slug(tag) // 格式化标签为slug格式
         if (formattedTag in tagCount) {
           tagCount[formattedTag] += 1
         } else {
@@ -76,15 +98,21 @@ async function createTagCount(allBlogs) {
       })
     }
   })
+  // 使用prettier格式化JSON并写入文件
   const formatted = await prettier.format(JSON.stringify(tagCount, null, 2), { parser: 'json' })
   writeFileSync('./app/tag-data.json', formatted)
 }
 
+/**
+ * 创建本地搜索索引
+ */
 function createSearchIndex(allBlogs) {
+  // 检查配置是否启用了kbar搜索
   if (
     siteMetadata?.search?.provider === 'kbar' &&
     siteMetadata.search.kbarConfig.searchDocumentsPath
   ) {
+    // 写入搜索索引文件
     writeFileSync(
       `public/${path.basename(siteMetadata.search.kbarConfig.searchDocumentsPath)}`,
       JSON.stringify(allCoreContent(sortPosts(allBlogs)))
@@ -93,26 +121,30 @@ function createSearchIndex(allBlogs) {
   }
 }
 
+// 定义Blog文档类型
 export const Blog = defineDocumentType(() => ({
-  name: 'Blog',
-  filePathPattern: 'blog/**/*.mdx',
-  contentType: 'mdx',
+  name: 'Blog', // 文档类型名称
+  filePathPattern: 'blog/**/*.mdx', // 匹配的文件路径模式
+  contentType: 'mdx', // 内容类型为MDX
   fields: {
-    title: { type: 'string', required: true },
-    date: { type: 'date', required: true },
-    tags: { type: 'list', of: { type: 'string' }, default: [] },
-    lastmod: { type: 'date' },
-    draft: { type: 'boolean' },
-    summary: { type: 'string' },
-    images: { type: 'json' },
-    authors: { type: 'list', of: { type: 'string' } },
-    layout: { type: 'string' },
-    bibliography: { type: 'string' },
-    canonicalUrl: { type: 'string' },
+    // 定义文档的元数据字段
+    title: { type: 'string', required: true }, // 标题（必填）
+    date: { type: 'date', required: true }, // 发布日期（必填）
+    tags: { type: 'list', of: { type: 'string' }, default: [] }, // 标签列表
+    lastmod: { type: 'date' }, // 最后修改日期
+    draft: { type: 'boolean' }, // 是否为草稿
+    summary: { type: 'string' }, // 摘要
+    images: { type: 'json' }, // 图片列表
+    authors: { type: 'list', of: { type: 'string' } }, // 作者列表
+    layout: { type: 'string' }, // 布局类型
+    bibliography: { type: 'string' }, // 参考文献
+    canonicalUrl: { type: 'string' }, // 规范URL
   },
   computedFields: {
-    ...computedFields,
+    // 计算字段
+    ...computedFields, // 继承通用计算字段
     structuredData: {
+      // 生成结构化数据（用于SEO）
       type: 'json',
       resolve: (doc) => ({
         '@context': 'https://schema.org',
@@ -128,61 +160,73 @@ export const Blog = defineDocumentType(() => ({
   },
 }))
 
+// 定义Authors文档类型
 export const Authors = defineDocumentType(() => ({
-  name: 'Authors',
-  filePathPattern: 'authors/**/*.mdx',
-  contentType: 'mdx',
+  name: 'Authors', // 文档类型名称
+  filePathPattern: 'authors/**/*.mdx', // 匹配的文件路径模式
+  contentType: 'mdx', // 内容类型为MDX
   fields: {
-    name: { type: 'string', required: true },
-    avatar: { type: 'string' },
-    occupation: { type: 'string' },
-    company: { type: 'string' },
-    email: { type: 'string' },
-    twitter: { type: 'string' },
-    bluesky: { type: 'string' },
-    linkedin: { type: 'string' },
-    github: { type: 'string' },
-    wechat: { type: 'string' },
-    layout: { type: 'string' },
+    // 定义作者的元数据字段
+    name: { type: 'string', required: true }, // 姓名（必填）
+    avatar: { type: 'string' }, // 头像
+    occupation: { type: 'string' }, // 职业
+    company: { type: 'string' }, // 公司
+    email: { type: 'string' }, // 邮箱
+    twitter: { type: 'string' }, // Twitter账号
+    bluesky: { type: 'string' }, // Bluesky账号
+    linkedin: { type: 'string' }, // LinkedIn账号
+    github: { type: 'string' }, // GitHub账号
+    wechat: { type: 'string' }, // 微信账号
+    layout: { type: 'string' }, // 布局类型
   },
-  computedFields,
+  computedFields, // 继承通用计算字段
 }))
 
+// 创建并导出Contentlayer数据源配置
 export default makeSource({
-  contentDirPath: 'data',
-  documentTypes: [Blog, Authors],
+  contentDirPath: 'data', // 内容文件所在目录
+
+  documentTypes: [Blog, Authors], // 注册文档类型
+
   mdx: {
-    cwd: process.cwd(),
+    // MDX处理配置
+    cwd: process.cwd(), // 当前工作目录
+
+    // Remark插件配置 - 处理Markdown语法
     remarkPlugins: [
-      remarkExtractFrontmatter,
-      remarkGfm,
-      remarkCodeTitles,
-      remarkMath,
-      remarkImgToJsx,
-      remarkAlert,
+      remarkExtractFrontmatter, // 提取frontmatter
+      remarkGfm, // 支持GFM语法
+      remarkCodeTitles, // 代码块标题
+      remarkMath, // 数学公式支持
+      remarkImgToJsx, // 图片转JSX
+      remarkAlert, // GitHub风格警报
     ],
+
+    // Rehype插件配置 - 处理HTML转换
     rehypePlugins: [
-      rehypeSlug,
+      rehypeSlug, // 为标题添加ID
       [
-        rehypeAutolinkHeadings,
+        rehypeAutolinkHeadings, // 为标题添加链接
         {
-          behavior: 'prepend',
+          behavior: 'prepend', // 在标题前添加链接
           headingProperties: {
-            className: ['content-header'],
+            className: ['content-header'], // 标题样式类
           },
-          content: icon,
+          content: icon, // 使用自定义图标作为链接内容
         },
       ],
-      rehypeKatex,
-      rehypeKatexNoTranslate,
-      [rehypeCitation, { path: path.join(root, 'data') }],
-      [rehypePrismPlus, { defaultLanguage: 'js', ignoreMissing: true }],
-      rehypePresetMinify,
+      rehypeKatex, // 渲染KaTeX数学公式
+      rehypeKatexNoTranslate, // 防止翻译数学公式
+      [rehypeCitation, { path: path.join(root, 'data') }], // 处理引用，指定数据路径
+      [rehypePrismPlus, { defaultLanguage: 'js', ignoreMissing: true }], // 代码高亮配置
+      rehypePresetMinify, // 最小化HTML输出
     ],
   },
+
+  // 处理成功后的回调函数
   onSuccess: async (importData) => {
-    const { allBlogs } = await importData()
-    createTagCount(allBlogs)
-    createSearchIndex(allBlogs)
+    const { allBlogs } = await importData() // 获取所有博客数据
+    createTagCount(allBlogs) // 生成标签计数
+    createSearchIndex(allBlogs) // 生成搜索索引
   },
 })
