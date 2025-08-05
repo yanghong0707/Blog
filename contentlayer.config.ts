@@ -38,6 +38,9 @@ import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
 // 导入代码格式化工具
 import prettier from 'prettier'
 
+// 导入Sanity数据获取函数
+import { getAllPosts, getAllAuthors, getTagCount } from './lib/sanity-data'
+
 // 获取当前工作目录
 const root = process.cwd()
 // 判断是否为生产环境
@@ -225,8 +228,20 @@ export default makeSource({
 
   // 处理成功后的回调函数
   onSuccess: async (importData) => {
-    const { allBlogs } = await importData() // 获取所有博客数据
-    createTagCount(allBlogs) // 生成标签计数
-    createSearchIndex(allBlogs) // 生成搜索索引
+    // 从Sanity获取数据而不是本地MDX文件
+    try {
+      const allPosts = await getAllPosts()
+      const allAuthors = await getAllAuthors()
+
+      // 创建标签计数
+      createTagCount(allPosts)
+
+      // 创建搜索索引
+      createSearchIndex(allPosts)
+
+      console.log('Sanity data processed successfully...')
+    } catch (error) {
+      console.error('Error processing Sanity data:', error)
+    }
   },
 })
