@@ -38,8 +38,8 @@ import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer.js'
 // 导入代码格式化工具
 import prettier from 'prettier'
 
-// 导入Sanity数据获取函数
-import { getAllPosts, getAllAuthors, getTagCount } from './lib/sanity-data'
+// 导入Sanity数据获取函数（只用于博客文章）
+import { getAllPosts } from './lib/sanity-data'
 
 // 获取当前工作目录
 const root = process.cwd()
@@ -124,10 +124,10 @@ function createSearchIndex(allBlogs) {
   }
 }
 
-// 定义Blog文档类型
+// 定义Blog文档类型 - 现在从Sanity获取，但保持Contentlayer结构
 export const Blog = defineDocumentType(() => ({
   name: 'Blog', // 文档类型名称
-  filePathPattern: 'blog/**/*.mdx', // 匹配的文件路径模式
+  filePathPattern: 'blog/**/*.mdx', // 匹配的文件路径模式（虽然实际不使用）
   contentType: 'mdx', // 内容类型为MDX
   fields: {
     // 定义文档的元数据字段
@@ -163,7 +163,7 @@ export const Blog = defineDocumentType(() => ({
   },
 }))
 
-// 定义Authors文档类型
+// 定义Authors文档类型 - 继续从本地MDX获取
 export const Authors = defineDocumentType(() => ({
   name: 'Authors', // 文档类型名称
   filePathPattern: 'authors/**/*.mdx', // 匹配的文件路径模式
@@ -228,20 +228,22 @@ export default makeSource({
 
   // 处理成功后的回调函数
   onSuccess: async (importData) => {
-    // 从Sanity获取数据而不是本地MDX文件
     try {
-      const allPosts = await getAllPosts()
-      const allAuthors = await getAllAuthors()
+      // 获取本地作者数据（从MDX文件）
+      const { allAuthors } = await importData()
 
-      // 创建标签计数
+      // 从Sanity获取博客文章数据
+      const allPosts = await getAllPosts()
+
+      // 创建标签计数（使用Sanity的博客数据）
       createTagCount(allPosts)
 
-      // 创建搜索索引
+      // 创建搜索索引（使用Sanity的博客数据）
       createSearchIndex(allPosts)
 
-      console.log('Sanity data processed successfully...')
+      console.log('Hybrid data processing completed: Authors from MDX, Posts from Sanity')
     } catch (error) {
-      console.error('Error processing Sanity data:', error)
+      console.error('Error processing hybrid data:', error)
     }
   },
 })

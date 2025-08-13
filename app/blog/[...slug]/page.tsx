@@ -3,15 +3,9 @@ import 'katex/dist/katex.css'
 
 import PageTitle from '@/components/PageTitle'
 import { components } from '@/components/MDXComponents'
-import {
-  sortPosts,
-  coreContent,
-  allCoreContent,
-  getAllPosts,
-  getPost,
-  getAllAuthors,
-  coreContentAuthor,
-} from '@/lib/sanity-data'
+import { sortPosts, coreContent, allCoreContent } from 'pliny/utils/contentlayer'
+import { allAuthors } from 'contentlayer/generated'
+import { getAllPostsForContentlayer } from '@/lib/sanity-contentlayer-adapter'
 import PostSimple from '@/layouts/PostSimple'
 import PostLayout from '@/layouts/PostLayout'
 import PostBanner from '@/layouts/PostBanner'
@@ -32,7 +26,9 @@ export async function generateMetadata(props: {
 }): Promise<Metadata | undefined> {
   const params = await props.params
   const slug = decodeURI(params.slug.join('/'))
-  const allPosts = await getAllPosts()
+
+  // 从Sanity获取博客数据
+  const allPosts = await getAllPostsForContentlayer()
   const post = allPosts.find((p) => p.slug === slug)
 
   if (!post) {
@@ -77,7 +73,7 @@ export async function generateMetadata(props: {
 }
 
 export const generateStaticParams = async () => {
-  const allPosts = await getAllPosts()
+  const allPosts = await getAllPostsForContentlayer()
   return allPosts.map((p) => ({ slug: p.slug.split('/').map((name) => decodeURI(name)) }))
 }
 
@@ -85,8 +81,9 @@ export default async function Page(props: { params: Promise<{ slug: string[] }> 
   const params = await props.params
   const slug = decodeURI(params.slug.join('/'))
 
-  // 获取所有文章和当前文章
-  const allPosts = await getAllPosts()
+  // 从Sanity获取博客数据并转换为Contentlayer兼容格式
+  const allPosts = await getAllPostsForContentlayer()
+
   const sortedCoreContents = allCoreContent(sortPosts(allPosts))
   const postIndex = sortedCoreContents.findIndex((p) => p.slug === slug)
 
@@ -103,11 +100,11 @@ export default async function Page(props: { params: Promise<{ slug: string[] }> 
   }
 
   const authorList = post.authors || ['default']
-  const allAuthors = await getAllAuthors()
+  // 从Contentlayer获取作者数据
   const authorDetails = authorList
     .map((author) => {
       const authorResults = allAuthors.find((p) => p.name === author)
-      return authorResults ? coreContentAuthor(authorResults) : null
+      return authorResults ? coreContent(authorResults) : null
     })
     .filter(Boolean)
 
