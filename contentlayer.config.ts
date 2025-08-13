@@ -182,7 +182,15 @@ export const Authors = defineDocumentType(() => ({
     wechat: { type: 'string' }, // 微信账号
     layout: { type: 'string' }, // 布局类型
   },
-  computedFields, // 继承通用计算字段
+  computedFields: {
+    // 继承通用计算字段
+    ...computedFields,
+    // 添加slug字段
+    slug: {
+      type: 'string',
+      resolve: (doc) => doc._raw.flattenedPath.replace(/^authors\//, '').replace(/\.mdx$/, ''),
+    },
+  },
 }))
 
 // 创建并导出Contentlayer数据源配置
