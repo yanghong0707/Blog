@@ -51,7 +51,7 @@ export interface SanityPost {
   summary?: string
   tags?: string[]
   images?: SanityImage[]
-  authors?: SanityAuthor[]
+  authors?: { name: string }[] // 现在是包含name的对象数组
   layout?: string
   bibliography?: string
   canonicalUrl?: string
@@ -68,7 +68,7 @@ export interface TransformedPost {
   summary?: string
   tags?: string[]
   images?: { url: string; alt: string }[]
-  authors?: string[]
+  authors?: string[] // 简化为字符串数组
   layout?: string
   bibliography?: string
   canonicalUrl?: string
@@ -144,8 +144,42 @@ function extractTocFromPortableText(blocks: unknown[]): unknown[] {
 
 // 转换Sanity数据为Contentlayer格式
 export function transformPost(post: SanityPost): TransformedPost {
-  const bodyHtml = post.body ? portableTextToHtml(post.body) : ''
+  // 计算阅读时间（基于summary或默认值）
+  const readingTimeText = post.summary ? readingTime(post.summary).text : '2 min read'
+
+  // 生成路径
+  const path = `blog/${post.slug.current}`
+
+  // 提取目录（如果有body内容）
   const toc = post.body ? extractTocFromPortableText(post.body) : []
+
+  // 转换作者信息
+  const authors = post.authors || [] // authors现在是包含name的对象数组
+
+  // 提取作者姓名
+  const processedAuthors = authors.map((author) => author.name)
+
+  // 调试信息
+  console.log('TransformPost - Original authors:', post.authors)
+  console.log('TransformPost - Processed authors:', processedAuthors)
+
+  // 转换图片
+  const images =
+    post.images?.map((img) => ({
+      url: urlFor(img.asset).url(),
+      alt: img.alt || '',
+    })) || []
+
+  // 转换body内容
+  const body = post.body
+    ? {
+        raw: JSON.stringify(post.body),
+        html: portableTextToHtml(post.body),
+      }
+    : {
+        raw: '',
+        html: '',
+      }
 
   const transformedPost: TransformedPost = {
     _id: post._id,
@@ -153,25 +187,17 @@ export function transformPost(post: SanityPost): TransformedPost {
     title: post.title,
     slug: post.slug.current,
     date: post.date,
-    lastmod: post.lastmod || post.date,
+    lastmod: post.lastmod,
     summary: post.summary || '',
     tags: post.tags || [],
-    images:
-      post.images?.map((img) => ({
-        url: urlFor(img.asset).url(),
-        alt: img.alt || '',
-      })) || [],
-    authors: post.authors?.map((author) => author.name) || [],
+    images: images,
+    authors: processedAuthors,
     layout: post.layout || 'PostLayout',
-    bibliography: post.bibliography || '',
-    canonicalUrl: post.canonicalUrl || '',
-    body: {
-      raw: post.body ? JSON.stringify(post.body) : '',
-      html: bodyHtml,
-    },
-    // 计算字段
-    readingTime: post.body ? readingTime(JSON.stringify(post.body)).text : '0 min read',
-    path: `blog/${post.slug.current}`,
+    bibliography: post.bibliography,
+    canonicalUrl: post.canonicalUrl,
+    body: body,
+    readingTime: readingTimeText,
+    path: path,
     filePath: `blog/${post.slug.current}.mdx`,
     toc: toc,
     structuredData: {

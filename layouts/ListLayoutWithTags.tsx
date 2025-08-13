@@ -126,7 +126,7 @@ export default function ListLayoutWithTags({
           <div>
             <ul>
               {displayPosts.map((post) => {
-                const { path, date, title, summary, tags } = post
+                const { path, date, title, summary, tags, authors } = post
                 return (
                   <li key={path} className="py-5">
                     <article className="flex flex-col space-y-2 xl:space-y-0">
@@ -145,6 +145,12 @@ export default function ListLayoutWithTags({
                               {title}
                             </Link>
                           </h2>
+                          {/* 显示作者信息 */}
+                          {authors && authors.length > 0 && (
+                            <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                              By: {Array.isArray(authors) ? authors.join(', ') : authors}
+                            </div>
+                          )}
                           <div className="flex flex-wrap">
                             {tags?.map((tag) => <Tag key={tag} text={tag} />)}
                           </div>

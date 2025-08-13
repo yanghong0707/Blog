@@ -17,18 +17,12 @@ export const POSTS_QUERY =
     alt
   },
   authors[]->{
-    _id,
-    name,
-    slug,
-    avatar{
-      asset->
-    },
-    occupation,
-    company
+    name
   },
   layout,
   bibliography,
-  canonicalUrl
+  canonicalUrl,
+  body
 }`)
 
 // 获取单个博客文章
@@ -45,22 +39,7 @@ export const POST_QUERY = defineQuery(`*[_type == "post" && slug.current == $slu
     alt
   },
   authors[]->{
-    _id,
-    name,
-    slug,
-    avatar{
-      asset->
-    },
-    occupation,
-    company,
-    email,
-    twitter,
-    bluesky,
-    linkedin,
-    github,
-    wechat,
-    layout,
-    bio
+    name
   },
   layout,
   bibliography,
@@ -130,14 +109,7 @@ export const POSTS_BY_TAG_QUERY =
     alt
   },
   authors[]->{
-    _id,
-    name,
-    slug,
-    avatar{
-      asset->
-    },
-    occupation,
-    company
+    name
   },
   layout
 }`)

@@ -16,10 +16,10 @@ export const generateStaticParams = async () => {
 export default async function Page(props: { params: Promise<{ page: string }> }) {
   const params = await props.params
 
-  // 从Sanity获取博客数据并转换为Contentlayer兼容格式
+  // 从Sanity获取博客数据
   const allPosts = await getAllPostsForContentlayer()
-
   const posts = allCoreContent(sortPosts(allPosts))
+
   const pageNumber = parseInt(params.page as string)
   const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE)
 

@@ -5,13 +5,14 @@ import PageTitle from '@/components/PageTitle'
 import { components } from '@/components/MDXComponents'
 import { sortPosts, coreContent, allCoreContent } from 'pliny/utils/contentlayer'
 import { allAuthors } from 'contentlayer/generated'
-import { getAllPostsForContentlayer } from '@/lib/sanity-contentlayer-adapter'
+import type { Authors } from 'contentlayer/generated'
 import PostSimple from '@/layouts/PostSimple'
 import PostLayout from '@/layouts/PostLayout'
-import PostBanner from '@/layouts/PostBanner'
+import PostBanner from '@/layouts/PostLayout'
 import { Metadata } from 'next'
 import siteMetadata from '@/data/siteMetadata'
 import { notFound } from 'next/navigation'
+import { getAllPostsForContentlayer } from '@/lib/sanity-contentlayer-adapter'
 import PortableText from '@/components/PortableText'
 
 const defaultLayout = 'PostLayout'
@@ -35,9 +36,18 @@ export async function generateMetadata(props: {
     return
   }
 
+  const authorList = post.authors || ['default']
+  // 从Contentlayer获取作者数据，通过name匹配
+  const authorDetails = authorList
+    .map((authorName) => {
+      const authorResults = allAuthors.find((p) => p.name === authorName)
+      return authorResults ? coreContent(authorResults) : null
+    })
+    .filter(Boolean)
+
   const publishedAt = new Date(post.date).toISOString()
   const modifiedAt = new Date(post.lastmod || post.date).toISOString()
-  const authors = post.authors || []
+  const authors = authorDetails.map((author) => author?.name || 'Unknown')
   let imageList = [siteMetadata.socialBanner]
   if (post.images && post.images.length > 0) {
     imageList = post.images.map((img) => img.url)
@@ -81,9 +91,8 @@ export default async function Page(props: { params: Promise<{ slug: string[] }> 
   const params = await props.params
   const slug = decodeURI(params.slug.join('/'))
 
-  // 从Sanity获取博客数据并转换为Contentlayer兼容格式
+  // 从Sanity获取博客数据
   const allPosts = await getAllPostsForContentlayer()
-
   const sortedCoreContents = allCoreContent(sortPosts(allPosts))
   const postIndex = sortedCoreContents.findIndex((p) => p.slug === slug)
 
@@ -100,10 +109,10 @@ export default async function Page(props: { params: Promise<{ slug: string[] }> 
   }
 
   const authorList = post.authors || ['default']
-  // 从Contentlayer获取作者数据
+  // 从Contentlayer获取作者数据，通过name匹配
   const authorDetails = authorList
-    .map((author) => {
-      const authorResults = allAuthors.find((p) => p.name === author)
+    .map((authorName) => {
+      const authorResults = allAuthors.find((p) => p.name === authorName)
       return authorResults ? coreContent(authorResults) : null
     })
     .filter(Boolean)
@@ -128,10 +137,17 @@ export default async function Page(props: { params: Promise<{ slug: string[] }> 
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <Layout content={mainContent} authorDetails={authorDetails} next={next} prev={prev}>
-        {post.body && post.body.raw ? (
-          <PortableText value={JSON.parse(post.body.raw)} />
+        {post.body && (post.body.raw || post.body.html) ? (
+          <PortableText value={post.body.raw ? JSON.parse(post.body.raw) : post.body.html} />
         ) : (
-          <div>No content available</div>
+          <div className="py-8 text-center text-gray-500">
+            <p>No content available</p>
+            <p className="mt-2 text-sm">
+              Debug info: body type: {typeof post.body}, raw:{' '}
+              {post.body?.raw ? 'exists' : 'missing'}, html:{' '}
+              {post.body?.html ? 'exists' : 'missing'}
+            </p>
+          </div>
         )}
       </Layout>
     </>

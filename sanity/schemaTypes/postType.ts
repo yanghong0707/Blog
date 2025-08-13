@@ -68,7 +68,8 @@ export const postType = defineType({
     defineField({
       name: 'authors',
       type: 'array',
-      of: [defineArrayMember({ type: 'reference', to: { type: 'author' } })],
+      of: [{ type: 'string' }], // 直接使用字符串数组，存储作者姓名
+      description: '输入作者姓名，用逗号分隔',
     }),
     defineField({
       name: 'layout',
