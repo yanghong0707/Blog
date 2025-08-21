@@ -104,8 +104,6 @@ export const POSTS_BY_TAG_QUERY =
     asset->,
     alt
   },
-  authors[]->{
-    name
-  },
+  authors,
   layout
 }`)
