@@ -16,9 +16,7 @@ export const POSTS_QUERY =
     asset->,
     alt
   },
-  authors[]->{
-    name
-  },
+  authors,
   layout,
   bibliography,
   canonicalUrl,
@@ -38,9 +36,7 @@ export const POST_QUERY = defineQuery(`*[_type == "post" && slug.current == $slu
     asset->,
     alt
   },
-  authors[]->{
-    name
-  },
+  authors,
   layout,
   bibliography,
   canonicalUrl,

@@ -154,14 +154,13 @@ export function transformPost(post: SanityPost): TransformedPost {
   const toc = post.body ? extractTocFromPortableText(post.body) : []
 
   // 转换作者信息
-  const authors = post.authors || [] // authors现在是包含name的对象数组
+  const authors = post.authors || [] // authors现在直接是字符串数组
 
-  // 提取作者姓名
-  const processedAuthors = authors.map((author) => author.name)
+  // 处理作者数据 - 现在直接是字符串数组，不需要提取name
+  const processedAuthors = authors.filter((author) => author && typeof author === 'string')
 
-  // 调试信息
-  console.log('TransformPost - Original authors:', post.authors)
-  console.log('TransformPost - Processed authors:', processedAuthors)
+  // 如果没有有效的作者，使用默认作者
+  const finalAuthors = processedAuthors.length > 0 ? processedAuthors : ['default']
 
   // 转换图片
   const images =
@@ -191,7 +190,7 @@ export function transformPost(post: SanityPost): TransformedPost {
     summary: post.summary || '',
     tags: post.tags || [],
     images: images,
-    authors: processedAuthors,
+    authors: finalAuthors,
     layout: post.layout || 'PostLayout',
     bibliography: post.bibliography,
     canonicalUrl: post.canonicalUrl,
